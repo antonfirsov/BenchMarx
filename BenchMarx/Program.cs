@@ -1,4 +1,5 @@
 ﻿using System;
+using BenchmarkDotNet.Running;
 
 namespace BenchMarx
 {
@@ -6,7 +7,7 @@ namespace BenchMarx
     {
         static void Main(string[] args)
         {
-            Console.WriteLine("Hello World!");
+            BenchmarkRunner.Run<SimdBenchmarks>();
         }
     }
 }
