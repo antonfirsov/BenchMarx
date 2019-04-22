@@ -175,14 +175,15 @@ namespace BenchMarx
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private void RunAvxIntrinsic(byte* sp, byte* dp)
         {
-            float* sBase = (float*) sp;
-            float* dBase = (float*) dp;
-            for (int i = 0; i < VectorCount; i+=8)
+            float* sPtr = (float*) sp;
+            float* dPtr = (float*) dp;
+            for (int i = 0; i < VectorCount; i++, sPtr += 8, dPtr+=8)
             {
-                Vector256<float> s = Avx.LoadVector256(sBase + i);
+                Vector256<float> s = Avx.LoadVector256(sPtr);
+                
                 Vector256<float> t = Avx.Multiply(s, s);
                 t = Avx.Add(t, s);
-                Avx.Store(dBase+i, t);
+                Avx.Store(dPtr, t);
             }
         }
         
@@ -204,7 +205,7 @@ namespace BenchMarx
             float* sPos = (float*) sp;
             float* dPos = (float*) dp;
             
-            for (int i = 0; i < VectorCount; i++)
+            for (int i = 0; i < VectorCount / 4; i++)
             {
                 Vector256<float> s0 = Avx.LoadVector256(sPos);
                 sPos += 8;
