@@ -22,12 +22,12 @@ namespace BenchMarx
         private int _byteCount;
        
         [Params(512)]
-        public int Count { get; set; }
+        public int VectorCount { get; set; }
 
         [GlobalSetup]
         public void Setup()
         {
-            _byteCount = Count * SizeOfVector;
+            _byteCount = VectorCount * SizeOfVector;
             
             _source = new Buffer(_byteCount, SizeOfVector);
             _dest = new Buffer(_byteCount, SizeOfVector);
@@ -48,7 +48,7 @@ namespace BenchMarx
             float* sBase = (float*) _source.UnalignedPtr;
             float* dBase = (float*) _dest.UnalignedPtr;
             
-            for (int i = 0; i < Count * SizeOfVector; i++)
+            for (int i = 0; i < VectorCount * 8; i++)
             {
                 float s = *(sBase + i);
                 *(dBase + i) = s * s + s;
@@ -77,7 +77,7 @@ namespace BenchMarx
             ref Vector<float> sBase = ref Unsafe.AsRef<Vector<float>>(sp);
             ref Vector<float> dBase = ref Unsafe.AsRef<Vector<float>>(dp);
             
-            for (int i = 0; i < Count; i++)
+            for (int i = 0; i < VectorCount; i++)
             {
                 Vector<float> s = Unsafe.Add(ref sBase, i);
 
@@ -116,7 +116,7 @@ namespace BenchMarx
             ref Vector<float> sBase = ref Unsafe.AsRef<Vector<float>>(sp);
             ref Vector<float> dBase = ref Unsafe.AsRef<Vector<float>>(dp);
             
-            for (int i = 0; i < Count; i+=4)
+            for (int i = 0; i < VectorCount; i+=4)
             {
                 Vector<float> s0 = Unsafe.Add(ref sBase, i);
                 Vector<float> s1 = Unsafe.Add(ref sBase, i + 1);
@@ -136,7 +136,7 @@ namespace BenchMarx
             ref Vector<float> sBase = ref Unsafe.AsRef<Vector<float>>(sp);
             ref Vector<float> dBase = ref Unsafe.AsRef<Vector<float>>(dp);
 
-            for (int i = 0; i < Count; i+=4)
+            for (int i = 0; i < VectorCount; i+=4)
             {
                 Vector<float> s0 = Unsafe.Add(ref sBase, i);
                 Vector<float> s1 = Unsafe.Add(ref sBase, i + 1);
@@ -177,12 +177,61 @@ namespace BenchMarx
         {
             float* sBase = (float*) sp;
             float* dBase = (float*) dp;
-            for (int i = 0; i < Count; i++)
+            for (int i = 0; i < VectorCount; i+=8)
             {
                 Vector256<float> s = Avx.LoadVector256(sBase + i);
                 Vector256<float> t = Avx.Multiply(s, s);
                 t = Avx.Add(t, s);
                 Avx.Store(dBase+i, t);
+            }
+        }
+        
+        [Benchmark]
+        public void AvxIntrinsicGroupedUnaligned()
+        {
+            RunAvxIntrinsicGrouped(_source.UnalignedPtr, _dest.UnalignedPtr);
+        }
+
+        [Benchmark]
+        public void AvxIntrinsicGroupedAligned()
+        {
+            RunAvxIntrinsicGrouped(_source.AlignedPtr, _dest.AlignedPtr);
+        }
+        
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private void RunAvxIntrinsicGrouped(byte* sp, byte* dp)
+        {
+            float* sPos = (float*) sp;
+            float* dPos = (float*) dp;
+            
+            for (int i = 0; i < VectorCount; i++)
+            {
+                Vector256<float> s0 = Avx.LoadVector256(sPos);
+                sPos += 8;
+                Vector256<float> s1 = Avx.LoadVector256(sPos);
+                sPos += 8;
+                Vector256<float> s2 = Avx.LoadVector256(sPos);
+                sPos += 8;
+                Vector256<float> s3 = Avx.LoadVector256(sPos);
+                sPos += 8;
+                
+                Vector256<float> t0 = Avx.Multiply(s0, s0);
+                Vector256<float> t1 = Avx.Multiply(s1, s1);
+                Vector256<float> t2 = Avx.Multiply(s2, s2);
+                Vector256<float> t3 = Avx.Multiply(s3, s3);
+                t0 = Avx.Add(t0, s0);
+                t1 = Avx.Add(t1, s1);
+                t2 = Avx.Add(t2, s2);
+                t3 = Avx.Add(t3, s3);
+                
+                Avx.Store(dPos, t0);
+                dPos += 8;
+                Avx.Store(dPos, t1);
+                dPos += 8;
+                Avx.Store(dPos, t2);
+                dPos += 8;
+                Avx.Store(dPos, t3);
+                dPos += 8;
             }
         }
     }
